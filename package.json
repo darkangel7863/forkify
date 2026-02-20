@@ -1,0 +1,29 @@
+{
+  "name": "forkify",
+  "version": "1.0.0",
+  "description": "Recipe application",
+  "homepage": "https://github.com/darkangel7863/forkify#readme",
+  "bugs": {
+    "url": "https://github.com/darkangel7863/forkify/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darkangel7863/forkify.git"
+  },
+  "license": "ISC",
+  "author": "Mohamed Ismail",
+  "type": "commonjs",
+  "scripts": {
+    "start": "parcel index.html",
+    "build": "parcel build index.html"
+  },
+  "devDependencies": {
+    "@parcel/transformer-sass": "^2.16.4",
+    "parcel": "^2.16.4",
+    "sass": "^1.97.3"
+  },
+  "dependencies": {
+    "core-js": "^3.48.0",
+    "regenerator-runtime": "^0.14.1"
+  }
+}
