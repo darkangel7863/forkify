@@ -720,13 +720,6 @@ var _modelJs = require("./model.js");
 var _recipeViewJs = require("./views/recipeView.js");
 var _recipeViewJsDefault = parcelHelpers.interopDefault(_recipeViewJs);
 var _runtime = require("regenerator-runtime/runtime");
-const timeout = function(s) {
-    return new Promise(function(_, reject) {
-        setTimeout(function() {
-            reject(new Error(`Request took too long! Timeout after ${s} second`));
-        }, s * 1000);
-    });
-};
 // NEW API URL (instead of the one shown in the video)
 // https://forkify-api.jonas.io
 ///////////////////////////////////////
@@ -740,14 +733,13 @@ const controlRecipes = async function() {
         (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
     // Rendering recipe
     } catch (err) {
-        alert(err);
+        console.error(err);
     }
 };
-// https://forkify-api.jonas.io/api/v2/recipes?search=pizza
-[
-    'hashchange',
-    'load'
-].forEach((ev)=>window.addEventListener(ev, controlRecipes));
+const init = function() {
+    (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipes);
+};
+init();
 
 },{"core-js/modules/web.immediate.js":"bzsBv","regenerator-runtime/runtime":"f6ot0","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./model.js":"3QBkH","./views/recipeView.js":"3wx5k"}],"bzsBv":[function(require,module,exports,__globalThis) {
 'use strict';
@@ -2622,14 +2614,14 @@ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "state", ()=>state);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
+var _config = require("./config");
+var _helpers = require("./helpers");
 const state = {
     recipe: {}
 };
 const loadRecipe = async function(id) {
     try {
-        const res = await fetch(`https://forkify-api.jonas.io/api/v2/recipes/${id}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(`${data.message} (${res.status})`);
+        const data = await (0, _helpers.getJSON)(`${(0, _config.API_URL)}/${id}`);
         const { recipe } = data.data;
         console.log(recipe);
         state.recipe = {
@@ -2644,18 +2636,51 @@ const loadRecipe = async function(id) {
         };
         console.log(state.recipe);
     } catch (err) {
-        alert(err);
+        console.error(`${err} \u{1F4A5}\u{1F4A5}\u{1F4A5}\u{1F4A5}`);
     }
 };
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"3wx5k":[function(require,module,exports,__globalThis) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./config":"2hPh4","./helpers":"7nL9P"}],"2hPh4":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "API_URL", ()=>API_URL);
+parcelHelpers.export(exports, "TIMEOUT_SEC", ()=>TIMEOUT_SEC);
+const API_URL = 'https://forkify-api.jonas.io/api/v2/recipes';
+const TIMEOUT_SEC = 10;
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"7nL9P":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "getJSON", ()=>getJSON);
+var _config = require("./config");
+const timeout = function(s) {
+    return new Promise(function(_, reject) {
+        setTimeout(function() {
+            reject(new Error(`Request took too long! Timeout after ${s} second`));
+        }, s * 1000);
+    });
+};
+const getJSON = async function(url) {
+    try {
+        const res = await Promise.race([
+            fetch(url),
+            timeout((0, _config.TIMEOUT_SEC))
+        ]);
+        const data = await res.json();
+        if (!res.ok) throw new Error(`${data.message} (${res.status})`);
+        return data;
+    } catch (err) {
+        throw err;
+    }
+};
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./config":"2hPh4"}],"3wx5k":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _iconsSvg = require("url:../../img/icons.svg");
 var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 var _fracty = require("fracty");
 var _fractyDefault = parcelHelpers.interopDefault(_fracty);
-console.log((0, _fractyDefault.default));
 class RecipeView {
     #parentElement = document.querySelector('.recipe');
     #data;
@@ -2677,6 +2702,12 @@ class RecipeView {
         this.#parentElement.innerHTML = '';
         this.#parentElement.insertAdjacentHTML('afterbegin', markup);
     };
+    addHandlerRender(handler) {
+        [
+            'hashchange',
+            'load'
+        ].forEach((ev)=>window.addEventListener(ev, handler));
+    }
     #generateMarkUp() {
         return `
         <figure class="recipe__fig">

@@ -1,6 +1,5 @@
 import icons from 'url:../../img/icons.svg';
 import toFraction from 'fracty';
-console.log(toFraction);
 
 class RecipeView {
   #parentElement = document.querySelector('.recipe');
@@ -24,6 +23,9 @@ class RecipeView {
     this.#parentElement.innerHTML = '';
     this.#parentElement.insertAdjacentHTML('afterbegin', markup);
   };
+  addHandlerRender(handler) {
+    ['hashchange', 'load'].forEach(ev => window.addEventListener(ev, handler));
+  }
   #generateMarkUp() {
     return `
         <figure class="recipe__fig">
