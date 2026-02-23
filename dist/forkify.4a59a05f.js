@@ -719,10 +719,19 @@ var _webImmediateJs = require("core-js/modules/web.immediate.js");
 var _modelJs = require("./model.js");
 var _recipeViewJs = require("./views/recipeView.js");
 var _recipeViewJsDefault = parcelHelpers.interopDefault(_recipeViewJs);
+var _searchViewJs = require("./views/searchView.js");
+var _searchViewJsDefault = parcelHelpers.interopDefault(_searchViewJs);
+var _resultsViewJs = require("./views/resultsView.js");
+var _resultsViewJsDefault = parcelHelpers.interopDefault(_resultsViewJs);
+var _paginationViewJs = require("./views/paginationView.js");
+var _paginationViewJsDefault = parcelHelpers.interopDefault(_paginationViewJs);
 var _runtime = require("regenerator-runtime/runtime");
 // NEW API URL (instead of the one shown in the video)
 // https://forkify-api.jonas.io
 ///////////////////////////////////////
+// if (module.hot) {
+//   module.hot.accept();
+// }
 const controlRecipes = async function() {
     try {
         const id = window.location.hash.slice(1);
@@ -730,18 +739,37 @@ const controlRecipes = async function() {
         (0, _recipeViewJsDefault.default).renderSpinner();
         // Loading recipe
         await _modelJs.loadRecipe(id);
+        // Rendering recipe
         (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
-    // Rendering recipe
     } catch (err) {
         (0, _recipeViewJsDefault.default).renderError();
     }
 };
+const controlSearchResults = async function() {
+    try {
+        const query = (0, _searchViewJsDefault.default).getQuery();
+        if (!query) return;
+        (0, _resultsViewJsDefault.default).renderSpinner();
+        await _modelJs.loadSearchResults(query);
+        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchResultsPage());
+        (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
+    } catch (err) {
+        console.log(err);
+    }
+};
+controlSearchResults();
+const controlParginaton = function(goToPage) {
+    (0, _resultsViewJsDefault.default).render(_modelJs.getSearchResultsPage(goToPage));
+    (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
+};
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipes);
+    (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
+    (0, _paginationViewJsDefault.default).addHandlerClick(controlParginaton);
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"bzsBv","regenerator-runtime/runtime":"f6ot0","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./model.js":"3QBkH","./views/recipeView.js":"3wx5k"}],"bzsBv":[function(require,module,exports,__globalThis) {
+},{"core-js/modules/web.immediate.js":"bzsBv","./model.js":"3QBkH","./views/recipeView.js":"3wx5k","./views/searchView.js":"kbE4Z","./views/resultsView.js":"kBQ4r","./views/paginationView.js":"7NIiB","regenerator-runtime/runtime":"f6ot0","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"bzsBv":[function(require,module,exports,__globalThis) {
 'use strict';
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -1994,7 +2022,502 @@ module.exports = function(scheduler, hasTimeArg) {
     } : scheduler;
 };
 
-},{"aa6765693e58a0fe":"6xMjU","a68ecfcbf29c46f6":"9A5Vw","7087588d33667af2":"2KfBB","864edee099e8affb":"k2Sud","3a3a5a2cfab86f21":"qxRHs","cff2c830bdea4f24":"kGYHC","58a74f00cee1ac64":"elQJL"}],"f6ot0":[function(require,module,exports,__globalThis) {
+},{"aa6765693e58a0fe":"6xMjU","a68ecfcbf29c46f6":"9A5Vw","7087588d33667af2":"2KfBB","864edee099e8affb":"k2Sud","3a3a5a2cfab86f21":"qxRHs","cff2c830bdea4f24":"kGYHC","58a74f00cee1ac64":"elQJL"}],"3QBkH":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "state", ()=>state);
+parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
+parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
+parcelHelpers.export(exports, "getSearchResultsPage", ()=>getSearchResultsPage);
+var _config = require("./config");
+var _helpers = require("./helpers");
+const state = {
+    recipe: {},
+    search: {
+        query: '',
+        results: [],
+        page: 1,
+        resultsPerPage: (0, _config.RES_PER_PAGE)
+    }
+};
+const loadRecipe = async function(id) {
+    try {
+        const data = await (0, _helpers.getJSON)(`${(0, _config.API_URL)}${id}`);
+        const { recipe } = data.data;
+        state.recipe = {
+            id: recipe.id,
+            title: recipe.title,
+            publisher: recipe.publisher,
+            sourceUrl: recipe.source_Url,
+            image: recipe.image_url,
+            servings: recipe.servings,
+            cookingTime: recipe.cooking_time,
+            ingredients: recipe.ingredients
+        };
+    } catch (err) {
+        console.error(`${err} \u{1F4A5}\u{1F4A5}\u{1F4A5}\u{1F4A5}`);
+        throw err;
+    }
+};
+const loadSearchResults = async function(query) {
+    try {
+        state.search.query = query;
+        const data = await (0, _helpers.getJSON)(`${(0, _config.API_URL)}?search=${query}`);
+        state.search.results = data.data.recipes.map((rec)=>{
+            return {
+                id: rec.id,
+                title: rec.title,
+                publisher: rec.publisher,
+                image: rec.image_url
+            };
+        });
+        state.search.page = 1;
+    } catch (err) {
+        console.error(`${err} \u{1F4A5}\u{1F4A5}\u{1F4A5}\u{1F4A5}`);
+        throw err;
+    }
+};
+const getSearchResultsPage = function(page = state.search.page) {
+    state.search.page = page;
+    const start = (page - 1) * state.search.resultsPerPage;
+    const end = page * state.search.resultsPerPage;
+    return state.search.results.slice(start, end);
+};
+
+},{"./config":"2hPh4","./helpers":"7nL9P","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"2hPh4":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "API_URL", ()=>API_URL);
+parcelHelpers.export(exports, "TIMEOUT_SEC", ()=>TIMEOUT_SEC);
+parcelHelpers.export(exports, "RES_PER_PAGE", ()=>RES_PER_PAGE);
+const API_URL = 'https://forkify-api.jonas.io/api/v2/recipes/';
+const TIMEOUT_SEC = 10;
+const RES_PER_PAGE = 10;
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"jnFvT":[function(require,module,exports,__globalThis) {
+exports.interopDefault = function(a) {
+    return a && a.__esModule ? a : {
+        default: a
+    };
+};
+exports.defineInteropFlag = function(a) {
+    Object.defineProperty(a, '__esModule', {
+        value: true
+    });
+};
+exports.exportAll = function(source, dest) {
+    Object.keys(source).forEach(function(key) {
+        if (key === 'default' || key === '__esModule' || Object.prototype.hasOwnProperty.call(dest, key)) return;
+        Object.defineProperty(dest, key, {
+            enumerable: true,
+            get: function() {
+                return source[key];
+            }
+        });
+    });
+    return dest;
+};
+exports.export = function(dest, destName, get) {
+    Object.defineProperty(dest, destName, {
+        enumerable: true,
+        get: get
+    });
+};
+
+},{}],"7nL9P":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "getJSON", ()=>getJSON);
+var _config = require("./config");
+const timeout = function(s) {
+    return new Promise(function(_, reject) {
+        setTimeout(function() {
+            reject(new Error(`Request took too long! Timeout after ${s} second`));
+        }, s * 1000);
+    });
+};
+const getJSON = async function(url) {
+    try {
+        const res = await Promise.race([
+            fetch(url),
+            timeout((0, _config.TIMEOUT_SEC))
+        ]);
+        const data = await res.json();
+        if (!res.ok) throw new Error(`${data.message} (${res.status})`);
+        return data;
+    } catch (err) {
+        throw err;
+    }
+};
+
+},{"./config":"2hPh4","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"3wx5k":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+var _fracty = require("fracty");
+var _fractyDefault = parcelHelpers.interopDefault(_fracty);
+var _view = require("./View");
+var _viewDefault = parcelHelpers.interopDefault(_view);
+class RecipeView extends (0, _viewDefault.default) {
+    _parentElement = document.querySelector('.recipe');
+    _errorMessage = 'We could not find that recipe. Please tr another one!';
+    _message = '';
+    addHandlerRender(handler) {
+        [
+            'hashchange',
+            'load'
+        ].forEach((ev)=>window.addEventListener(ev, handler));
+    }
+    _generateMarkUp() {
+        return `
+        <figure class="recipe__fig">
+          <img src="${this._data.image}" alt="${this._data.title}" class="recipe__img" />
+          <h1 class="recipe__title">
+            <span>${this._data.title}</span>
+          </h1>
+        </figure>
+
+        <div class="recipe__details">
+          <div class="recipe__info">
+            <svg class="recipe__info-icon">
+              <use href="${0, _iconsSvgDefault.default}#icon-clock"></use>
+            </svg>
+            <span class="recipe__info-data recipe__info-data--minutes">${this._data.cookingTime}</span>
+            <span class="recipe__info-text">minutes</span>
+          </div>
+          <div class="recipe__info">
+            <svg class="recipe__info-icon">
+              <use href="${0, _iconsSvgDefault.default}#icon-users"></use>
+            </svg>
+            <span class="recipe__info-data recipe__info-data--people">${this._data.servings}</span>
+            <span class="recipe__info-text">servings</span>
+
+            <div class="recipe__info-buttons">
+              <button class="btn--tiny btn--increase-servings">
+                <svg>
+                  <use href="${0, _iconsSvgDefault.default}#icon-minus-circle"></use>
+                </svg>
+              </button>
+              <button class="btn--tiny btn--increase-servings">
+                <svg>
+                  <use href="${0, _iconsSvgDefault.default}#icon-plus-circle"></use>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="recipe__user-generated">
+            
+          </div>
+          <button class="btn--round">
+            <svg class="">
+              <use href="${0, _iconsSvgDefault.default}#icon-bookmark-fill"></use>
+            </svg>
+          </button>
+        </div>
+
+        <div class="recipe__ingredients">
+          <h2 class="heading--2">Recipe ingredients</h2>
+          <ul class="recipe__ingredient-list">
+          ${this._data.ingredients.map(this._generateMarkupIngredent).join('')}
+            
+          </ul>
+        </div>
+
+        <div class="recipe__directions">
+          <h2 class="heading--2">How to cook it</h2>
+          <p class="recipe__directions-text">
+            This recipe was carefully designed and tested by
+            <span class="recipe__publisher">${this._data.publisher}</span>. Please check out
+            directions at their website.
+          </p>
+          <a
+            class="btn--small recipe__btn"
+            href="${this._data.sourceUrl}"
+            target="_blank"
+          >
+            <span>Directions</span>
+            <svg class="search__icon">
+              <use href="${0, _iconsSvgDefault.default}#icon-arrow-right"></use>
+            </svg>
+          </a>
+        </div>
+        `;
+    }
+    _generateMarkupIngredent(ing) {
+        return `<li class="recipe__ingredient">
+              <svg class="recipe__icon">
+                <use href="${0, _iconsSvgDefault.default}#icon-check"></use>
+              </svg>
+              <div class="recipe__quantity">${ing.quantity ? (0, _fractyDefault.default)(ing.quantity) : ''}</div>
+              <div class="recipe__description">
+                <span class="recipe__unit">${ing.unit}</span>
+                ${ing.description}
+              </div>
+            </li>`;
+    }
+}
+exports.default = new RecipeView();
+
+},{"url:../../img/icons.svg":"fd0vu","fracty":"gsPKI","./View":"jSw21","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"fd0vu":[function(require,module,exports,__globalThis) {
+module.exports = module.bundle.resolve("icons.0809ef97.svg") + "?" + Date.now();
+
+},{}],"gsPKI":[function(require,module,exports,__globalThis) {
+// FRACTY CONVERTS DECIMAL NUMBERS TO FRACTIONS BY ASSUMING THAT TRAILING PATTERNS FROM 10^-2 CONTINUE TO REPEAT
+// The assumption is based on the most standard numbering conventions
+// e.g. 3.51 will convert to 3 51/100 while 3.511 will convert to 3 23/45
+// Throw any number up to 16 digits long at fracty and let fracy do the work.
+// If number is beyond 16 digits fracty will truncate at 15 digits to compensate for roundoff errors created in IEEE 754 Floating Point conversion.
+module.exports = function(number) {
+    let type;
+    if (number < 0) {
+        number = Math.abs(number);
+        type = '-';
+    } else type = '';
+    if (number === undefined) return `Your input was undefined.`;
+    if (isNaN(number)) return `"${number}" is not a number.`;
+    if (number == 9999999999999999) return `${type}9999999999999999`;
+    if (number > 9999999999999999) return `Too many digits in your integer to maintain IEEE 754 Floating Point conversion accuracy.`;
+    if (Number.isInteger(number)) return `${type}${number}`;
+    if (number < .000001) return '0';
+    const numberString = number.toString();
+    const entry = numberString.split('.');
+    let integer = entry[0];
+    let decimal;
+    if (decimal == '0' && integer !== '0') return integer;
+    else if (decimal == '0' && integer == '0') return '0';
+    else if (numberString.length >= 17) decimal = entry[1].slice(0, entry[1].length - 1);
+    else decimal = entry[1];
+    if (decimal == '99' && integer !== '0') return `${integer} 99/100`;
+    else if (decimal == '99' && integer == '0') return `99/100`;
+    else if (1 - parseFloat(`.${decimal}`) < .0011) decimal = '999';
+    if (decimal == undefined) return integer;
+    const decimalRev = decimal.split('').reverse().join(''); //Reverse the string to look for patterns.
+    const patternSearch = /^(\d+)\1{1,2}/; //This greedy regex matches the biggest pattern that starts at the beginning of the string (at the end, in the case of the reversed string). A lazy regex doesn't work because it only identifies subpatterns in cases where subpatterns exist (e.g. '88' in '388388388388'), thus pattern capture must be greedy.
+    let pattern = decimalRev.match(patternSearch); //If there's a pattern, it's full sequence is in [0] of this array and the single unit is in [1] but it may still need to be reduced further.
+    if (pattern && decimal.length > 2) {
+        let patternSequence = pattern[0].split('').reverse().join('');
+        let endPattern = pattern[1].split('').reverse().join('');
+        if (endPattern.length > 1) {
+            let endPatternArray = endPattern.split('');
+            let testSingleUnit = 1;
+            for(let i = 0; i < endPatternArray.length; i++)testSingleUnit /= endPatternArray[0] / endPatternArray[i];
+            if (testSingleUnit === 1) endPattern = endPatternArray[0];
+        }
+        if (endPattern.length > 1 && endPattern.length % 2 === 0) endPattern = parseInt(endPattern.slice(0, endPattern.length / 2), 10) - parseInt(endPattern.slice(endPattern.length / 2, endPattern.length), 10) === 0 ? endPattern.slice(0, endPattern.length / 2) : endPattern;
+        return yesRepeat(decimal, endPattern, patternSequence, integer, type); //Begin calculating the numerator and denominator for decimals that have a pattern.
+    } else return noRepeat(decimal, integer, type); //Begin calculating the numerator and denominator for decimals that don't have a pattern.
+};
+//IF THERE'S A TRAILING PATTERN FRACTY DIVIDES THE INPUT BY ONE SUBTRACTED FROM THE NEAREST BASE 10 NUMBER WITH NUMBER OF ZEROS EQUAL TO THE LENGTH OF THE REPEATED PATTERN (I.E. A SERIES OF 9'S) MULTIPLIED BY THE BASE 10 NUMBER GREATER THAN AND CLOSEST TO THE INPUT.
+function yesRepeat(decimal, endPattern, patternSequence, integer, type) {
+    const rep = true; //The numerator repeats.
+    const nonPatternLength = decimal.length - patternSequence.length >= 1 ? decimal.length - patternSequence.length : 1; //Does the length of the non pattern segment of the input = 0? If it does, that's incorrect since we know it must equal at least 1, otherwise it's the length of the decimal input minus the length of the full pattern.
+    const decimalMultiplier2 = Math.pow(10, nonPatternLength); //Second multiplier to use.
+    const float = parseFloat(`0.${decimal}`); //Convert the decimal input to a floating point number.
+    const decimalMultiplier1 = Math.pow(10, endPattern.length); //Find the right multiplier to use for both numerator and denominator, which will later have 1 subtracted from it in the case of the denominator.
+    const numerator = Math.round((float * decimalMultiplier1 - float) * Math.pow(10, nonPatternLength)); //Find the numerator to be used in calculating the fraction that contains a repeating trailing sequence.
+    const denominator = (decimalMultiplier1 - 1) * decimalMultiplier2; //Caluculate the denominator using the equation for repeating trailing sequences.
+    return reduce(numerator, denominator, integer, type, rep); //Further reduce the numerator and denominator.
+}
+//IF THERE'S NO TRAILING PATTERN FRACTY DIVIDES THE INPUT BY THE NEAREST BASE 10 INTEGER GREATER THAN THE NUMERATOR.
+function noRepeat(decimal, integer, type) {
+    const rep = false; //The numerator doesn't repeat.
+    const numerator = parseInt(decimal, 10); //Numerator begins as decimal input converted into an integer.
+    const denominator = Math.pow(10, decimal.length); //Denominator begins as 10 to the power of the length of the numerator.
+    return reduce(numerator, denominator, integer, type, rep); //Reduce the numerator and denominator.
+}
+//FRACTY REDUCES THE FRACTION.
+function reduce(numerator, denominator, integer, type, rep) {
+    const primeNumberArray = [
+        2,
+        3,
+        5
+    ]; //If the numerator isn't from a repeating decimal case, the initialized array of prime numbers will suffice to find the common denominators.
+    if (rep === true) {
+        for(let i = 3; i * i <= numerator; i += 2)if (numerator % i === 0) primeNumberArray.push(i);
+    }
+    let j = 0; //Initialize counter over the prime number array for the while loop.
+    let comDenom = 1; //Initialize the common denominator.
+    let num = numerator; //Initialize the numerator.
+    let den = denominator; //Initialize the denominator.
+    while(j <= primeNumberArray.length)if (num % primeNumberArray[j] === 0 && den % primeNumberArray[j] === 0) {
+        comDenom = comDenom * primeNumberArray[j];
+        num = num / primeNumberArray[j];
+        den = den / primeNumberArray[j];
+    } else j++;
+    return returnStrings(den, num, integer, type);
+}
+//FRACTY RETURNS THE REDUCED FRACTION AS A STRING.
+function returnStrings(den, num, integer, type) {
+    if (den === 1 && num === 1) {
+        integer = `${type}${(parseInt(integer) + 1).toString()}`; //Add 1 to the integer and return a string without a fraction.
+        return `${integer}`;
+    } else if (num === 0) return `${type}${integer}`;
+    else if (integer == '0') return `${type}${num}/${den}`;
+    else return `${type}${integer} ${num}/${den}`; //If there's an integer and a fraction return both.
+}
+
+},{}],"jSw21":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+class View {
+    _data;
+    render(data) {
+        if (!data || Array.isArray(data) && data.length === 0) return this.renderError();
+        this._data = data;
+        const markup = this._generateMarkUp();
+        this._clear();
+        this._parentElement.insertAdjacentHTML('afterbegin', markup);
+    }
+    _clear() {
+        this._parentElement.innerHTML = '';
+    }
+    renderSpinner() {
+        const markup = `<div class="spinner">
+              <svg>
+                <use href="${(0, _iconsSvgDefault.default)}#icon-loader"></use>
+              </svg>
+            </div>`;
+        this._clear();
+        this._parentElement.insertAdjacentHTML('afterbegin', markup);
+    }
+    renderError(message = this._errorMessage) {
+        const markup = `<div class="error">
+              <div>
+                <svg>
+                  <use href="${(0, _iconsSvgDefault.default)}#icon-alert-triangle"></use>
+                </svg>
+              </div>
+              <p>${message}</p>
+            </div>`;
+        this._clear();
+        this._parentElement.insertAdjacentHTML('afterbegin', markup);
+    }
+    renderMessage(message = this._message) {
+        const markup = `<div class="message">
+            <div>
+              <svg>
+                <use href="${(0, _iconsSvgDefault.default)}#icon-smile"></use>
+              </svg>
+            </div>
+            <p>${message}</p>
+          </div>`;
+        this._clear();
+        this._parentElement.insertAdjacentHTML('afterbegin', markup);
+    }
+}
+exports.default = View;
+
+},{"url:../../img/icons.svg":"fd0vu","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"kbE4Z":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+class SearchView {
+    _parentEl = document.querySelector('.search');
+    getQuery() {
+        const query = this._parentEl.querySelector('.search__field').value;
+        this._clearInput();
+        return query;
+    }
+    _clearInput() {
+        this._parentEl.querySelector('.search__field').value = '';
+    }
+    addHandlerSearch(handler) {
+        this._parentEl.addEventListener('submit', function(e) {
+            e.preventDefault();
+            handler();
+        });
+    }
+}
+exports.default = new SearchView();
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"kBQ4r":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _view = require("./View");
+var _viewDefault = parcelHelpers.interopDefault(_view);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+class ResultsView extends (0, _viewDefault.default) {
+    _parentElement = document.querySelector('.results');
+    _errorMessage = 'No recipes found for your query! Please try again ;)';
+    _message = '';
+    _generateMarkUp() {
+        return this._data.map(this._generateMarkUpPreview).join('');
+    }
+    _generateMarkUpPreview(result) {
+        return `
+          <li class="preview">
+            <a class="preview__link" href="#${result.id}">
+              <figure class="preview__fig">
+                <img src="${result.image}" alt="${result.title}" />
+              </figure>
+              <div class="preview__data">
+                <h4 class="preview__title">${result.title}</h4>
+                <p class="preview__publisher">${result.publisher}</p>
+              </div>
+            </a>
+          </li>          `;
+    }
+}
+exports.default = new ResultsView();
+
+},{"./View":"jSw21","url:../../img/icons.svg":"fd0vu","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"7NIiB":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _view = require("./View");
+var _viewDefault = parcelHelpers.interopDefault(_view);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+class PaginationView extends (0, _viewDefault.default) {
+    _parentElement = document.querySelector('.pagination');
+    addHandlerClick(handler) {
+        this._parentElement.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn--inline');
+            if (!btn) return;
+            const goToPage = +btn.dataset.goto;
+            handler(goToPage);
+        });
+    }
+    _generateMarkUp() {
+        const curPage = this._data.page;
+        const numPages = Math.ceil(this._data.results.length / this._data.resultsPerPage);
+        //  Page 1 , and there are other pages
+        if (curPage === 1 && numPages > 1) return `<button data-goto="${curPage + 1}" class="btn--inline pagination__btn--next">
+           <span>Page ${curPage + 1}</span>
+             <svg class="search__icon">
+               <use href="${0, _iconsSvgDefault.default}#icon-arrow-right"></use>
+             </svg>
+           </button>`;
+        //  Last page
+        if (curPage === numPages && numPages > 1) return `<button data-goto="${curPage - 1}"class="btn--inline pagination__btn--prev">
+             <svg class="search__icon">
+               <use href="${0, _iconsSvgDefault.default}#icon-arrow-left"></use>
+             </svg>
+             <span>Page ${curPage - 1}</span>
+           </button>`;
+        //  Other page
+        if (curPage < numPages && numPages > 1) return `<button data-goto="${curPage - 1}"class="btn--inline pagination__btn--prev">
+             <svg class="search__icon">
+               <use href="${0, _iconsSvgDefault.default}#icon-arrow-left"></use>
+             </svg>
+             <span>Page ${curPage - 1}</span>
+           </button>
+           <button data-goto="${curPage + 1}" class="btn--inline pagination__btn--next">
+             <span>Page ${curPage + 1}</span>
+             <svg class="search__icon">
+               <use href="${0, _iconsSvgDefault.default}#icon-arrow-right"></use>
+             </svg>
+           </button>`;
+        //  Page 1 , and there are no other pages
+        return '';
+    }
+}
+exports.default = new PaginationView();
+
+},{"./View":"jSw21","url:../../img/icons.svg":"fd0vu","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"f6ot0":[function(require,module,exports,__globalThis) {
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
  *
@@ -2577,351 +3100,6 @@ try {
     // problems, please detail your unique predicament in a GitHub issue.
     if (typeof globalThis === "object") globalThis.regeneratorRuntime = runtime;
     else Function("r", "regeneratorRuntime = r")(runtime);
-}
-
-},{}],"jnFvT":[function(require,module,exports,__globalThis) {
-exports.interopDefault = function(a) {
-    return a && a.__esModule ? a : {
-        default: a
-    };
-};
-exports.defineInteropFlag = function(a) {
-    Object.defineProperty(a, '__esModule', {
-        value: true
-    });
-};
-exports.exportAll = function(source, dest) {
-    Object.keys(source).forEach(function(key) {
-        if (key === 'default' || key === '__esModule' || Object.prototype.hasOwnProperty.call(dest, key)) return;
-        Object.defineProperty(dest, key, {
-            enumerable: true,
-            get: function() {
-                return source[key];
-            }
-        });
-    });
-    return dest;
-};
-exports.export = function(dest, destName, get) {
-    Object.defineProperty(dest, destName, {
-        enumerable: true,
-        get: get
-    });
-};
-
-},{}],"3QBkH":[function(require,module,exports,__globalThis) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "state", ()=>state);
-parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
-var _config = require("./config");
-var _helpers = require("./helpers");
-const state = {
-    recipe: {}
-};
-const loadRecipe = async function(id) {
-    try {
-        const data = await (0, _helpers.getJSON)(`${(0, _config.API_URL)}/${id}`);
-        const { recipe } = data.data;
-        state.recipe = {
-            id: recipe.id,
-            title: recipe.title,
-            publisher: recipe.publisher,
-            sourceUrl: recipe.source_Url,
-            image: recipe.image_url,
-            servings: recipe.servings,
-            cookingTime: recipe.cooking_time,
-            ingredients: recipe.ingredients
-        };
-    } catch (err) {
-        console.error(`${err} \u{1F4A5}\u{1F4A5}\u{1F4A5}\u{1F4A5}`);
-        throw err;
-    }
-};
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./config":"2hPh4","./helpers":"7nL9P"}],"2hPh4":[function(require,module,exports,__globalThis) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "API_URL", ()=>API_URL);
-parcelHelpers.export(exports, "TIMEOUT_SEC", ()=>TIMEOUT_SEC);
-const API_URL = 'https://forkify-api.jonas.io/api/v2/recipes';
-const TIMEOUT_SEC = 10;
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}],"7nL9P":[function(require,module,exports,__globalThis) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "getJSON", ()=>getJSON);
-var _config = require("./config");
-const timeout = function(s) {
-    return new Promise(function(_, reject) {
-        setTimeout(function() {
-            reject(new Error(`Request took too long! Timeout after ${s} second`));
-        }, s * 1000);
-    });
-};
-const getJSON = async function(url) {
-    try {
-        const res = await Promise.race([
-            fetch(url),
-            timeout((0, _config.TIMEOUT_SEC))
-        ]);
-        const data = await res.json();
-        if (!res.ok) throw new Error(`${data.message} (${res.status})`);
-        return data;
-    } catch (err) {
-        throw err;
-    }
-};
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./config":"2hPh4"}],"3wx5k":[function(require,module,exports,__globalThis) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-var _iconsSvg = require("url:../../img/icons.svg");
-var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
-var _fracty = require("fracty");
-var _fractyDefault = parcelHelpers.interopDefault(_fracty);
-class RecipeView {
-    #parentElement = document.querySelector('.recipe');
-    #data;
-    #errorMessage = 'We could not find that recipe. Please tr another one!';
-    #message = '';
-    render(data) {
-        this.#data = data;
-        const markup = this.#generateMarkUp();
-        this.#clear();
-        this.#parentElement.insertAdjacentHTML('afterbegin', markup);
-    }
-    #clear() {
-        this.#parentElement.innerHTML = '';
-    }
-    renderSpinner() {
-        const markup = `<div class="spinner">
-            <svg>
-              <use href="${(0, _iconsSvgDefault.default)}#icon-loader"></use>
-            </svg>
-          </div>`;
-        this.#clear;
-        this.#parentElement.insertAdjacentHTML('afterbegin', markup);
-    }
-    renderError(message = this.#errorMessage) {
-        const markup = `<div class="error">
-            <div>
-              <svg>
-                <use href="${(0, _iconsSvgDefault.default)}#icon-alert-triangle"></use>
-              </svg>
-            </div>
-            <p>${message}</p>
-          </div>`;
-        this.#clear;
-        this.#parentElement.insertAdjacentHTML('afterbegin', markup);
-    }
-    renderMessage(message = this.#message) {
-        const markup = `<div class="message">
-          <div>
-            <svg>
-              <use href="${(0, _iconsSvgDefault.default)}#icon-smile"></use>
-            </svg>
-          </div>
-          <p>${message}</p>
-        </div>`;
-        this.#clear;
-        this.#parentElement.insertAdjacentHTML('afterbegin', markup);
-    }
-    addHandlerRender(handler) {
-        [
-            'hashchange',
-            'load'
-        ].forEach((ev)=>window.addEventListener(ev, handler));
-    }
-    #generateMarkUp() {
-        return `
-        <figure class="recipe__fig">
-          <img src="${this.#data.image}" alt="${this.#data.title}" class="recipe__img" />
-          <h1 class="recipe__title">
-            <span>${this.#data.title}</span>
-          </h1>
-        </figure>
-
-        <div class="recipe__details">
-          <div class="recipe__info">
-            <svg class="recipe__info-icon">
-              <use href="${0, _iconsSvgDefault.default}#icon-clock"></use>
-            </svg>
-            <span class="recipe__info-data recipe__info-data--minutes">${this.#data.cookingTime}</span>
-            <span class="recipe__info-text">minutes</span>
-          </div>
-          <div class="recipe__info">
-            <svg class="recipe__info-icon">
-              <use href="${0, _iconsSvgDefault.default}#icon-users"></use>
-            </svg>
-            <span class="recipe__info-data recipe__info-data--people">${this.#data.servings}</span>
-            <span class="recipe__info-text">servings</span>
-
-            <div class="recipe__info-buttons">
-              <button class="btn--tiny btn--increase-servings">
-                <svg>
-                  <use href="${0, _iconsSvgDefault.default}#icon-minus-circle"></use>
-                </svg>
-              </button>
-              <button class="btn--tiny btn--increase-servings">
-                <svg>
-                  <use href="${0, _iconsSvgDefault.default}#icon-plus-circle"></use>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div class="recipe__user-generated">
-            <svg>
-              <use href="${0, _iconsSvgDefault.default}#icon-user"></use>
-            </svg>
-          </div>
-          <button class="btn--round">
-            <svg class="">
-              <use href="${0, _iconsSvgDefault.default}#icon-bookmark-fill"></use>
-            </svg>
-          </button>
-        </div>
-
-        <div class="recipe__ingredients">
-          <h2 class="heading--2">Recipe ingredients</h2>
-          <ul class="recipe__ingredient-list">
-          ${this.#data.ingredients.map(this.#generateMarkupIngredent).join('')}
-            
-          </ul>
-        </div>
-
-        <div class="recipe__directions">
-          <h2 class="heading--2">How to cook it</h2>
-          <p class="recipe__directions-text">
-            This recipe was carefully designed and tested by
-            <span class="recipe__publisher">${this.#data.publisher}</span>. Please check out
-            directions at their website.
-          </p>
-          <a
-            class="btn--small recipe__btn"
-            href="${this.#data.sourceUrl}"
-            target="_blank"
-          >
-            <span>Directions</span>
-            <svg class="search__icon">
-              <use href="${0, _iconsSvgDefault.default}#icon-arrow-right"></use>
-            </svg>
-          </a>
-        </div>
-        `;
-    }
-    #generateMarkupIngredent(ing) {
-        return `<li class="recipe__ingredient">
-              <svg class="recipe__icon">
-                <use href="${0, _iconsSvgDefault.default}#icon-check"></use>
-              </svg>
-              <div class="recipe__quantity">${ing.quantity ? (0, _fractyDefault.default)(ing.quantity) : ''}</div>
-              <div class="recipe__description">
-                <span class="recipe__unit">${ing.unit}</span>
-                ${ing.description}
-              </div>
-            </li>`;
-    }
-}
-exports.default = new RecipeView();
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","url:../../img/icons.svg":"fd0vu","fracty":"gsPKI"}],"fd0vu":[function(require,module,exports,__globalThis) {
-module.exports = module.bundle.resolve("icons.0809ef97.svg") + "?" + Date.now();
-
-},{}],"gsPKI":[function(require,module,exports,__globalThis) {
-// FRACTY CONVERTS DECIMAL NUMBERS TO FRACTIONS BY ASSUMING THAT TRAILING PATTERNS FROM 10^-2 CONTINUE TO REPEAT
-// The assumption is based on the most standard numbering conventions
-// e.g. 3.51 will convert to 3 51/100 while 3.511 will convert to 3 23/45
-// Throw any number up to 16 digits long at fracty and let fracy do the work.
-// If number is beyond 16 digits fracty will truncate at 15 digits to compensate for roundoff errors created in IEEE 754 Floating Point conversion.
-module.exports = function(number) {
-    let type;
-    if (number < 0) {
-        number = Math.abs(number);
-        type = '-';
-    } else type = '';
-    if (number === undefined) return `Your input was undefined.`;
-    if (isNaN(number)) return `"${number}" is not a number.`;
-    if (number == 9999999999999999) return `${type}9999999999999999`;
-    if (number > 9999999999999999) return `Too many digits in your integer to maintain IEEE 754 Floating Point conversion accuracy.`;
-    if (Number.isInteger(number)) return `${type}${number}`;
-    if (number < .000001) return '0';
-    const numberString = number.toString();
-    const entry = numberString.split('.');
-    let integer = entry[0];
-    let decimal;
-    if (decimal == '0' && integer !== '0') return integer;
-    else if (decimal == '0' && integer == '0') return '0';
-    else if (numberString.length >= 17) decimal = entry[1].slice(0, entry[1].length - 1);
-    else decimal = entry[1];
-    if (decimal == '99' && integer !== '0') return `${integer} 99/100`;
-    else if (decimal == '99' && integer == '0') return `99/100`;
-    else if (1 - parseFloat(`.${decimal}`) < .0011) decimal = '999';
-    if (decimal == undefined) return integer;
-    const decimalRev = decimal.split('').reverse().join(''); //Reverse the string to look for patterns.
-    const patternSearch = /^(\d+)\1{1,2}/; //This greedy regex matches the biggest pattern that starts at the beginning of the string (at the end, in the case of the reversed string). A lazy regex doesn't work because it only identifies subpatterns in cases where subpatterns exist (e.g. '88' in '388388388388'), thus pattern capture must be greedy.
-    let pattern = decimalRev.match(patternSearch); //If there's a pattern, it's full sequence is in [0] of this array and the single unit is in [1] but it may still need to be reduced further.
-    if (pattern && decimal.length > 2) {
-        let patternSequence = pattern[0].split('').reverse().join('');
-        let endPattern = pattern[1].split('').reverse().join('');
-        if (endPattern.length > 1) {
-            let endPatternArray = endPattern.split('');
-            let testSingleUnit = 1;
-            for(let i = 0; i < endPatternArray.length; i++)testSingleUnit /= endPatternArray[0] / endPatternArray[i];
-            if (testSingleUnit === 1) endPattern = endPatternArray[0];
-        }
-        if (endPattern.length > 1 && endPattern.length % 2 === 0) endPattern = parseInt(endPattern.slice(0, endPattern.length / 2), 10) - parseInt(endPattern.slice(endPattern.length / 2, endPattern.length), 10) === 0 ? endPattern.slice(0, endPattern.length / 2) : endPattern;
-        return yesRepeat(decimal, endPattern, patternSequence, integer, type); //Begin calculating the numerator and denominator for decimals that have a pattern.
-    } else return noRepeat(decimal, integer, type); //Begin calculating the numerator and denominator for decimals that don't have a pattern.
-};
-//IF THERE'S A TRAILING PATTERN FRACTY DIVIDES THE INPUT BY ONE SUBTRACTED FROM THE NEAREST BASE 10 NUMBER WITH NUMBER OF ZEROS EQUAL TO THE LENGTH OF THE REPEATED PATTERN (I.E. A SERIES OF 9'S) MULTIPLIED BY THE BASE 10 NUMBER GREATER THAN AND CLOSEST TO THE INPUT.
-function yesRepeat(decimal, endPattern, patternSequence, integer, type) {
-    const rep = true; //The numerator repeats.
-    const nonPatternLength = decimal.length - patternSequence.length >= 1 ? decimal.length - patternSequence.length : 1; //Does the length of the non pattern segment of the input = 0? If it does, that's incorrect since we know it must equal at least 1, otherwise it's the length of the decimal input minus the length of the full pattern.
-    const decimalMultiplier2 = Math.pow(10, nonPatternLength); //Second multiplier to use.
-    const float = parseFloat(`0.${decimal}`); //Convert the decimal input to a floating point number.
-    const decimalMultiplier1 = Math.pow(10, endPattern.length); //Find the right multiplier to use for both numerator and denominator, which will later have 1 subtracted from it in the case of the denominator.
-    const numerator = Math.round((float * decimalMultiplier1 - float) * Math.pow(10, nonPatternLength)); //Find the numerator to be used in calculating the fraction that contains a repeating trailing sequence.
-    const denominator = (decimalMultiplier1 - 1) * decimalMultiplier2; //Caluculate the denominator using the equation for repeating trailing sequences.
-    return reduce(numerator, denominator, integer, type, rep); //Further reduce the numerator and denominator.
-}
-//IF THERE'S NO TRAILING PATTERN FRACTY DIVIDES THE INPUT BY THE NEAREST BASE 10 INTEGER GREATER THAN THE NUMERATOR.
-function noRepeat(decimal, integer, type) {
-    const rep = false; //The numerator doesn't repeat.
-    const numerator = parseInt(decimal, 10); //Numerator begins as decimal input converted into an integer.
-    const denominator = Math.pow(10, decimal.length); //Denominator begins as 10 to the power of the length of the numerator.
-    return reduce(numerator, denominator, integer, type, rep); //Reduce the numerator and denominator.
-}
-//FRACTY REDUCES THE FRACTION.
-function reduce(numerator, denominator, integer, type, rep) {
-    const primeNumberArray = [
-        2,
-        3,
-        5
-    ]; //If the numerator isn't from a repeating decimal case, the initialized array of prime numbers will suffice to find the common denominators.
-    if (rep === true) {
-        for(let i = 3; i * i <= numerator; i += 2)if (numerator % i === 0) primeNumberArray.push(i);
-    }
-    let j = 0; //Initialize counter over the prime number array for the while loop.
-    let comDenom = 1; //Initialize the common denominator.
-    let num = numerator; //Initialize the numerator.
-    let den = denominator; //Initialize the denominator.
-    while(j <= primeNumberArray.length)if (num % primeNumberArray[j] === 0 && den % primeNumberArray[j] === 0) {
-        comDenom = comDenom * primeNumberArray[j];
-        num = num / primeNumberArray[j];
-        den = den / primeNumberArray[j];
-    } else j++;
-    return returnStrings(den, num, integer, type);
-}
-//FRACTY RETURNS THE REDUCED FRACTION AS A STRING.
-function returnStrings(den, num, integer, type) {
-    if (den === 1 && num === 1) {
-        integer = `${type}${(parseInt(integer) + 1).toString()}`; //Add 1 to the integer and return a string without a fraction.
-        return `${integer}`;
-    } else if (num === 0) return `${type}${integer}`;
-    else if (integer == '0') return `${type}${num}/${den}`;
-    else return `${type}${integer} ${num}/${den}`; //If there's an integer and a fraction return both.
 }
 
 },{}]},["5DuvQ","7dWZ8"], "7dWZ8", "parcelRequire3a11", {}, "./", "/")
