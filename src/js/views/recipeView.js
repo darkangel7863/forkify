@@ -106,5 +106,6 @@ class RecipeView extends View {
       if (+updateTo > 0) handler(+updateTo);
     });
   }
+  
 }
 export default new RecipeView();
