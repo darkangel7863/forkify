@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Recipe application",
   "homepage": "https://github.com/darkangel7863/forkify#readme",
+  "default": "index.html",
   "bugs": {
     "url": "https://github.com/darkangel7863/forkify/issues"
   },
@@ -14,7 +15,7 @@
   "author": "Mohamed Ismail",
   "scripts": {
     "start": "parcel index.html",
-    "build": "parcel build index.html"
+    "build": "parcel build index.html --dist-dir ./dist"
   },
   "devDependencies": {
     "@parcel/transformer-sass": "^2.16.4",
